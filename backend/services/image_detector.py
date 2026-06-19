@@ -16,7 +16,7 @@ class ImageDeepfakeDetector:
     def load_model(self):
         if self.model is None:
             if not os.path.exists(self.model_path):
-                print(f"WARNING: Model file not found at {self.model_path}. Please place 'deepfake_model.onnx' in backend/weights/")
+                print(f"WARNING: Model file not found at {self.model_path}. Please place 'deepfake_model.onnx' in weights/")
                 return False
             self.model = ort.InferenceSession(self.model_path)
             print("ONNX Image Model Session loaded successfully.")
@@ -32,7 +32,7 @@ class ImageDeepfakeDetector:
         if img is None:
             raise ValueError("Could not read image content")
 
-        # ✅ Convert BGR (OpenCV default) to RGB (matches training data)
+        # Convert BGR (OpenCV default) to RGB (matches training data)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
         # Resize to match model input
@@ -61,17 +61,6 @@ class ImageDeepfakeDetector:
             print(f"[ImageDetector] Raw model output: {raw}")
 
             prediction = float(raw[0][0])
-
-            # ─────────────────────────────────────────────────────────────────
-            # IMPORTANT: Label convention must match what was used during training.
-            #
-            # If trained with:  label 0 = REAL,  label 1 = FAKE  → score > 0.5 is Fake  ✅
-            # If trained with:  label 0 = FAKE,  label 1 = REAL  → score > 0.5 is Real  (flip needed)
-            #
-            # The current convention below treats a HIGH score (>0.5) as FAKE.
-            # If predictions are still inverted after this fix, flip the condition:
-            #   is_fake = prediction < 0.5
-            # ─────────────────────────────────────────────────────────────────
             is_fake = prediction > 0.5
             label = "Deepfake" if is_fake else "Real"
             confidence = float(prediction * 100) if is_fake else float((1.0 - prediction) * 100)
@@ -96,7 +85,7 @@ class ImageDeepfakeDetector:
             }
 
         except Exception as e:
-            print(f"Prediction failed for {file_path}: {str(e)}")
+            print(f"Prediction failed for image: {str(e)}")
             import traceback
             traceback.print_exc()
             return {

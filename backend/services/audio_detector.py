@@ -3,9 +3,7 @@ import numpy as np
 import onnxruntime as ort
 import librosa
 
-
 class AudioDeepfakeDetector:
-
     def __init__(self, model_path: str):
         self.model_path = model_path
         self.model = None
@@ -18,7 +16,7 @@ class AudioDeepfakeDetector:
     def load_model(self):
         if self.model is None:
             if not os.path.exists(self.model_path):
-                print(f"WARNING: Audio Model not found at {self.model_path}. Please place 'audio_deepfake_model.onnx' in backend/weights/")
+                print(f"WARNING: Audio Model not found at {self.model_path}. Please place 'audio_deepfake_model.onnx' in weights/")
                 return False
             self.model = ort.InferenceSession(self.model_path)
             print("ONNX Audio Model Session loaded successfully.")
@@ -65,12 +63,6 @@ class AudioDeepfakeDetector:
             print(f"[AudioDetector] Raw model output: {raw}")
 
             prediction = float(raw[0][0])
-
-            # ─────────────────────────────────────────────────────────────────
-            # IMPORTANT: Label convention must match what was used during training.
-            # HIGH score (>0.5) → FAKE | LOW score (<0.5) → REAL
-            # If still inverted, flip: is_fake = prediction < 0.5
-            # ─────────────────────────────────────────────────────────────────
             is_fake = prediction > 0.5
             label = "Deepfake" if is_fake else "Real"
             confidence = round(float(prediction * 100) if is_fake else float((1.0 - prediction) * 100), 2)
@@ -83,7 +75,6 @@ class AudioDeepfakeDetector:
                 "Discrepancies in Mel-frequency cepstral coefficients (MFCCs)."
             ]
 
-            # Deterministic reason selection based on score (avoids random flipping on re-detect)
             reason_index = int(prediction * 100) % len(reasons)
 
             return {
@@ -94,6 +85,7 @@ class AudioDeepfakeDetector:
             }
 
         except Exception as e:
+            print(f"Audio prediction failed: {str(e)}")
             import traceback
             traceback.print_exc()
             return {

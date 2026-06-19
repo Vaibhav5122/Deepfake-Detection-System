@@ -17,7 +17,7 @@ class VideoDeepfakeDetector:
     def load_model(self):
         if self.model is None:
             if not os.path.exists(self.model_path):
-                print(f"WARNING: Video/Image Model not found at {self.model_path}. Please place 'deepfake_model.onnx' in backend/weights/")
+                print(f"WARNING: Video/Image Model not found at {self.model_path}. Please place 'deepfake_model.onnx' in weights/")
                 return False
             self.model = ort.InferenceSession(self.model_path)
             print("ONNX Video Model Loaded successfully.")
@@ -40,7 +40,7 @@ class VideoDeepfakeDetector:
             if not ret:
                 break
 
-            # ✅ Convert BGR (OpenCV default) to RGB (matches training data)
+            # Convert BGR (OpenCV default) to RGB (matches training data)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             # Resize to model input size
             frame = cv2.resize(frame, self.input_shape)
@@ -66,24 +66,14 @@ class VideoDeepfakeDetector:
             predictions = self.model.run([output_name], {input_name: frames})[0]
             print(f"[VideoDetector] Raw model outputs: {predictions.flatten()}")
 
-            # ─────────────────────────────────────────────────────────────────
-            # Handle both (N, 1) sigmoid output and (N, 2) softmax output
-            # ─────────────────────────────────────────────────────────────────
             if predictions.shape[1] == 1:
-                # Sigmoid: output is probability of being FAKE (class 1)
                 scores = [float(p[0]) for p in predictions]
             else:
-                # Softmax: output[1] is probability of being FAKE
                 scores = [float(p[1]) for p in predictions]
 
             avg_score = sum(scores) / len(scores)
             print(f"[VideoDetector] Average fake score: {avg_score:.4f}")
 
-            # ─────────────────────────────────────────────────────────────────
-            # IMPORTANT: Label convention must match what was used during training.
-            # HIGH score (>0.5) → FAKE | LOW score (<0.5) → REAL
-            # If still inverted, flip: is_fake = avg_score < 0.5
-            # ─────────────────────────────────────────────────────────────────
             is_fake = avg_score > 0.5
             label = "Deepfake" if is_fake else "Real"
             confidence = round(avg_score * 100 if is_fake else (1.0 - avg_score) * 100, 2)
@@ -96,7 +86,6 @@ class VideoDeepfakeDetector:
                 "Deepfake facial morphing detected between active frames."
             ]
 
-            # Deterministic reason selection based on score (avoids random flipping on re-detect)
             reason_index = int(avg_score * 100) % len(reasons)
 
             return {
