@@ -1,0 +1,7 @@
+Trying preprocess_image...
+Traceback (most recent call last):
+  File "/Users/vaibhav/Documents/Study/Project-Abhi/DDS/Final-Project/backend/test_model.py", line 10, in <module>
+    data = model.preprocess_image(img_path)
+  File "/Users/vaibhav/Documents/Study/Project-Abhi/DDS/Final-Project/backend/ml_models/detector_img.py", line 32, in preprocess_image
+    raise ValueError(f"Could not read image at {file_path}")
+ValueError: Could not read image at C:\Users\mohan\.gemini\antigravity\brain\9e393ebd-a97c-4f77-8b58-d532f97a2486\fake_image_test_1772901837471.png
