@@ -1,8 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router';
 import Icon from './Icon';
 
-export const Hero = ({ onStart }) => {
+export const Hero = () => {
+    const navigate = useNavigate();
+
     return (
         <div className="min-h-screen flex flex-col items-center justify-center px-4 pt-20 text-center overflow-hidden">
             <motion.div
@@ -27,13 +30,13 @@ export const Hero = ({ onStart }) => {
 
                 <div className="flex flex-col sm:flex-row gap-6 justify-center">
                     <button
-                        onClick={() => onStart('image-detection')}
+                        onClick={() => navigate('/image-detection')}
                         className="px-10 py-4 bg-brand-primary text-black font-tech font-bold rounded-full shadow-[0_0_30px_rgba(0,242,96,0.3)] hover:shadow-[0_0_50px_rgba(0,242,96,0.5)] transform hover:scale-105 transition-all flex items-center gap-3 justify-center"
                     >
                         START DETECTION
                         <Icon name="arrow-right" className="w-5 h-5" />
                     </button>
-                    <button onClick={() => onStart('about')} className="px-10 py-4 glass text-white font-tech font-bold rounded-full hover:bg-white/10 transform hover:scale-105 transition-all">
+                    <button onClick={() => navigate('/about')} className="px-10 py-4 glass text-white font-tech font-bold rounded-full hover:bg-white/10 transform hover:scale-105 transition-all">
                         OUR TECHNOLOGY
                     </button>
                 </div>

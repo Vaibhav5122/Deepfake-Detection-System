@@ -1,18 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useEffect } from 'react';
+import { Outlet, useLocation } from 'react-router';
 
 import BackgroundLayer from './components/BackgroundLayer';
 import Navbar from './components/Navbar';
-import Hero from './components/Hero';
-import DetectionView from './components/DetectionView';
-import AboutPage from './components/AboutPage';
 
 const App = () => {
-    const [path, setPath] = useState('home');
+    const location = useLocation();
+    
+    // Map URL pathname to path names expected by background and navbar components
+    let currentPath = 'home';
+    if (location.pathname === '/image-detection') {
+        currentPath = 'image-detection';
+    } else if (location.pathname === '/video-detection') {
+        currentPath = 'video-detection';
+    } else if (location.pathname === '/audio-detection') {
+        currentPath = 'audio-detection';
+    } else if (location.pathname === '/about') {
+        currentPath = 'about';
+    }
 
     useEffect(() => {
         window.scrollTo(0, 0);
-    }, [path]);
+    }, [location.pathname]);
 
     useEffect(() => {
         if (window.tsParticles) {
@@ -34,36 +43,10 @@ const App = () => {
 
     return (
         <div className="relative min-h-screen">
-            <BackgroundLayer currentPath={path} />
-            <Navbar currentPath={path} setPath={setPath} />
+            <BackgroundLayer currentPath={currentPath} />
+            <Navbar currentPath={currentPath} />
             <main>
-                <AnimatePresence mode="wait">
-                    {path === 'home' && (
-                        <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-                            <Hero onStart={setPath} />
-                        </motion.div>
-                    )}
-                    {path === 'image-detection' && (
-                        <motion.div key="image" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-                            <DetectionView type="image-detection" />
-                        </motion.div>
-                    )}
-                    {path === 'video-detection' && (
-                        <motion.div key="video" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-                            <DetectionView type="video-detection" />
-                        </motion.div>
-                    )}
-                    {path === 'audio-detection' && (
-                        <motion.div key="audio" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-                            <DetectionView type="audio-detection" />
-                        </motion.div>
-                    )}
-                    {path === 'about' && (
-                        <motion.div key="about" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-                            <AboutPage />
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                <Outlet />
             </main>
             <footer className="py-12 border-t border-white/5 text-center text-gray-600 text-xs">
                 <p className="mb-2">© 2026 DEEPSIGHT AI FORENSICS. ALL RIGHTS RESERVED.</p>

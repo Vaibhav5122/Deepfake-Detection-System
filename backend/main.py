@@ -1,5 +1,6 @@
+import os
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -7,17 +8,39 @@ from routers import detection_router
 
 app = FastAPI(title="Deepfake Detection API", version="1.0.0")
 
-# Enable CORS (critical for Vercel integration)
+# API Key Validation Dependency
+API_KEY = os.getenv("API_KEY", "")
+
+async def verify_api_key(x_api_key: str = Header(None)):
+    # If no API key is configured on the backend, skip validation (convenient for local dev)
+    if not API_KEY:
+        return
+    if x_api_key != API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing API Key"
+        )
+
+# Configure Allowed Origins for CORS (restricting to localhost + production Vercel domains)
+origins_env = os.getenv("ALLOWED_ORIGINS", "")
+if origins_env:
+    allowed_origins = [o.strip() for o in origins_env.split(",") if o.strip()]
+    # Always allow local dev domains for convenience
+    allowed_origins.extend(["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"])
+else:
+    # Default to wildcard if not configured in environment
+    allowed_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Register routes
-app.include_router(detection_router)
+# Register routes with API Key protection
+app.include_router(detection_router, dependencies=[Depends(verify_api_key)])
 
 # Health Check / Welcome Endpoint
 @app.get("/")
