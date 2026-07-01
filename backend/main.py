@@ -1,10 +1,16 @@
 import os
 import uvicorn
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 from fastapi import FastAPI, Header, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from routers import detection_router
+from auth import auth_router
 
 app = FastAPI(title="Deepfake Detection API", version="1.0.0")
 
@@ -38,6 +44,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Register authentication routes
+app.include_router(auth_router)
 
 # Register routes with API Key protection
 app.include_router(detection_router, dependencies=[Depends(verify_api_key)])

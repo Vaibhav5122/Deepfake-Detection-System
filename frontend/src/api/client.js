@@ -11,4 +11,24 @@ const client = axios.create({
     },
 });
 
+// Request interceptor to handle auth token and Content-Type overriding
+client.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            config.headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        // If request payload is not a FormData instance, default to JSON
+        if (!(config.data instanceof FormData)) {
+            config.headers['Content-Type'] = 'application/json';
+        }
+        
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
+
 export default client;

@@ -2,7 +2,8 @@ import React from 'react';
 import {
     Home, Image as ImageIcon, Video, Mic, Cpu, ShieldCheck, Menu, ArrowRight,
     UploadCloud, FileText, X, Zap, CheckCircle, AlertOctagon,
-    Activity, Search, Music, Layers, Code, Eye, Component, Palette, Server, HelpCircle
+    Activity, Search, Music, Layers, Code, Eye, Component, Palette, Server, HelpCircle,
+    User, Lock, Mail, LogIn, LogOut
 } from 'lucide-react';
 
 const iconMap = {
@@ -28,7 +29,12 @@ const iconMap = {
     'eye': Eye,
     'component': Component,
     'palette': Palette,
-    'server': Server
+    'server': Server,
+    'user': User,
+    'lock': Lock,
+    'mail': Mail,
+    'log-in': LogIn,
+    'log-out': LogOut
 };
 
 export const Icon = ({ name, className = "w-6 h-6", color = "currentColor" }) => {

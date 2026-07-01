@@ -6,3 +6,8 @@ librosa
 numpy
 python-multipart
 soundfile
+motor
+pymongo
+bcrypt
+pyjwt
+python-dotenv

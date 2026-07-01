@@ -2,10 +2,11 @@ import os
 import uuid
 import asyncio
 from typing import Any
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from fastapi.responses import JSONResponse
 
 from services import image_model, video_model, audio_model
+from auth.logic import get_current_user
 
 router = APIRouter(prefix="/api/detect", tags=["detection"])
 
@@ -61,7 +62,7 @@ async def handle_media_upload_memory(file: UploadFile, model: Any):
 
 
 @router.post("/image")
-async def detect_image(file: UploadFile = File(...)):
+async def detect_image(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Invalid file type. Expected image.")
     result = await handle_media_upload_memory(file, image_model)
@@ -69,7 +70,7 @@ async def detect_image(file: UploadFile = File(...)):
 
 
 @router.post("/video")
-async def detect_video(file: UploadFile = File(...)):
+async def detect_video(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
     if not file.content_type.startswith("video/"):
         raise HTTPException(status_code=400, detail="Invalid file type. Expected video.")
     result = await handle_media_upload(file, video_model)
@@ -77,7 +78,7 @@ async def detect_video(file: UploadFile = File(...)):
 
 
 @router.post("/audio")
-async def detect_audio(file: UploadFile = File(...)):
+async def detect_audio(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
     if not file.content_type.startswith("audio/"):
         raise HTTPException(status_code=400, detail="Invalid file type. Expected audio.")
     result = await handle_media_upload_memory(file, audio_model)
