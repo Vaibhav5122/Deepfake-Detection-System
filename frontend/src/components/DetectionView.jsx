@@ -11,6 +11,8 @@ export const DetectionView = ({ type }) => {
     const [result, setResult] = useState(null);
     const [error, setError] = useState(null);
     const fileInputRef = useRef(null);
+    const analysisPromiseRef = useRef(null);
+    const abortControllerRef = useRef(null);
 
     const config = {
         'image-detection': { label: 'Image', icon: 'image', accept: 'image/*', color: 'emerald', endpoint: 'image', indicator: 'Pixel Artifact' },
@@ -29,6 +31,9 @@ export const DetectionView = ({ type }) => {
     }, [file]);
 
     useEffect(() => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
         setFile(null);
         setResult(null);
         setAnalyzing(false);
@@ -39,10 +44,89 @@ export const DetectionView = ({ type }) => {
     const handleFileChange = (e) => {
         const selected = e.target.files?.[0];
         if (selected) {
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
             setFile(selected);
             setResult(null);
             setError(null);
+            setProgress(0);
+            setAnalyzing(false);
+
+            // Start pre-uploading and inference in the background immediately!
+            startBackgroundInference(selected);
         }
+    };
+
+    const compressImage = (imageFile) => {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(imageFile);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const max_size = 400; // Resize target max width/height
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > max_size) {
+                            height = Math.round((height * max_size) / width);
+                            width = max_size;
+                        }
+                    } else {
+                        if (height > max_size) {
+                            width = Math.round((width * max_size) / height);
+                            height = max_size;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    canvas.toBlob(
+                        (blob) => {
+                            if (blob) {
+                                const compressed = new File([blob], imageFile.name, {
+                                    type: 'image/jpeg',
+                                    lastModified: Date.now()
+                                });
+                                resolve(compressed);
+                            } else {
+                                resolve(imageFile);
+                            }
+                        },
+                        'image/jpeg',
+                        0.85
+                    );
+                };
+                img.onerror = () => resolve(imageFile);
+            };
+            reader.onerror = () => resolve(imageFile);
+        });
+    };
+
+    const startBackgroundInference = async (selectedFile) => {
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
+        let fileToUpload = selectedFile;
+        if (config.endpoint === 'image') {
+            try {
+                fileToUpload = await compressImage(selectedFile);
+            } catch (err) {
+                console.error("Compression failed:", err);
+            }
+        }
+
+        // Trigger request in the background and cache its Promise reference
+        analysisPromiseRef.current = detectMedia(config.endpoint, fileToUpload, {
+            signal: controller.signal
+        });
     };
 
     const runAnalysis = async () => {
@@ -52,9 +136,6 @@ export const DetectionView = ({ type }) => {
         setError(null);
         setProgress(10);
 
-        const formData = new FormData();
-        formData.append('file', file);
-
         let progressInterval = null;
 
         try {
@@ -63,8 +144,13 @@ export const DetectionView = ({ type }) => {
                 setProgress(p => (p < 90 ? p + Math.random() * 12 : p));
             }, 400);
 
-            // Call the Axios API service
-            const data = await detectMedia(config.endpoint, file);
+            // If background promise was not triggered yet, trigger it now as fallback
+            if (!analysisPromiseRef.current) {
+                startBackgroundInference(file);
+            }
+
+            // Await the response of the pre-started background analysis request
+            const data = await analysisPromiseRef.current;
 
             // Stop progress timer immediately after response
             if (progressInterval) {
@@ -79,6 +165,10 @@ export const DetectionView = ({ type }) => {
             }, 600);
 
         } catch (err) {
+            // Suppress cancellations resulting from user changing files
+            if (err.name === 'CanceledError' || err.code === 'ERR_CANCELED') {
+                return;
+            }
             console.error("Analysis failed:", err);
             setError('System error: Unable to process media. Check backend connection.');
             setAnalyzing(false);
@@ -90,6 +180,9 @@ export const DetectionView = ({ type }) => {
     };
 
     const reset = () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
         setFile(null);
         setResult(null);
         setAnalyzing(false);
@@ -137,14 +230,28 @@ export const DetectionView = ({ type }) => {
                             </button>
                             <input type="file" ref={fileInputRef} className="hidden" accept={config.accept} onChange={handleFileChange} />
                             {file && (
-                                <div className="mt-8 p-4 glass rounded-2xl w-full max-w-md flex items-center justify-between border-brand-primary/20 animate-pulse" onClick={e => e.stopPropagation()}>
-                                    <div className="flex items-center gap-3">
-                                        <Icon name="file-text" className="text-brand-primary" />
-                                        <span className="text-sm font-medium truncate max-w-[200px]">{file.name}</span>
+                                <div className="mt-8 w-full max-w-md flex flex-col gap-3" onClick={e => e.stopPropagation()}>
+                                    <div className="p-4 glass rounded-2xl flex items-center justify-between border border-brand-primary/20 animate-pulse">
+                                        <div className="flex items-center gap-3 text-left">
+                                            <Icon name="file-text" className="text-brand-primary shrink-0" />
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="text-sm font-medium truncate max-w-[200px]">{file.name}</span>
+                                                <span className="text-[10px] text-gray-500">{(file.size / (1024 * 1024)).toFixed(2)} MB</span>
+                                            </div>
+                                        </div>
+                                        <button onClick={e => { e.stopPropagation(); setFile(null); }} className="text-gray-500 hover:text-red-500 cursor-pointer">
+                                            <Icon name="x" className="w-4 h-4" />
+                                        </button>
                                     </div>
-                                    <button onClick={e => { e.stopPropagation(); setFile(null); }} className="text-gray-500 hover:text-red-500">
-                                        <Icon name="x" className="w-4 h-4" />
-                                    </button>
+                                    
+                                    {config.endpoint === 'video' && file.size > 8 * 1024 * 1024 && (
+                                        <div className="px-4 py-3 rounded-xl border border-status-warning/20 bg-status-warning/10 text-status-warning text-xs text-left leading-relaxed flex gap-2">
+                                            <Icon name="alert-octagon" className="w-4 h-4 shrink-0 mt-0.5" />
+                                            <span>
+                                                <strong>Large file warning:</strong> Uploading/analyzing this video may take some time on basic cloud CPU instances. For immediate processing, try files under 8MB (short clips).
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

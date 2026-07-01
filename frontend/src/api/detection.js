@@ -6,10 +6,10 @@ import client from './client';
  * @param {File} file - The uploaded media file object
  * @returns {Promise<object>} The JSON response containing prediction, confidence, and reason.
  */
-export const detectMedia = async (endpoint, file) => {
+export const detectMedia = async (endpoint, file, axiosConfig = {}) => {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await client.post(`/api/detect/${endpoint}`, formData);
+    const response = await client.post(`/api/detect/${endpoint}`, formData, axiosConfig);
     return response.data;
 };
